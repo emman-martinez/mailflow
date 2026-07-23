@@ -1,6 +1,8 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { env } from "./config/env.js";
+import { authRoutes } from "./modules/auth/auth.routes.js";
+import authPlugin from "./plugins/auth.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -26,7 +28,10 @@ export function buildApp() {
   });
 
   app.register(prismaPlugin);
+  app.register(authPlugin);
+
   app.register(healthRoutes, { prefix: "/api" });
+  app.register(authRoutes, { prefix: "/api/auth" });
 
   return app;
 }
