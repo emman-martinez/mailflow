@@ -11,6 +11,7 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
             properties: {
               status: { type: "string" },
               service: { type: "string" },
+              database: { type: "string" },
               timestamp: { type: "string" },
             },
           },
@@ -18,9 +19,12 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async () => {
+      await app.prisma.$queryRaw`SELECT 1`;
+
       return {
         status: "ok",
         service: "api",
+        database: "ok",
         timestamp: new Date().toISOString(),
       };
     },

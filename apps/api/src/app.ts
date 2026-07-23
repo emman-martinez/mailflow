@@ -1,13 +1,15 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { env } from "./config/env.js";
+import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
 export function buildApp() {
   const app = Fastify({
     logger: {
-      level: process.env.LOG_LEVEL ?? "info",
+      level: env.LOG_LEVEL,
       transport:
-        process.env.NODE_ENV === "development"
+        env.NODE_ENV === "development"
           ? {
               target: "pino-pretty",
               options: {
@@ -20,9 +22,10 @@ export function buildApp() {
   });
 
   app.register(cors, {
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
+    origin: env.WEB_ORIGIN,
   });
 
+  app.register(prismaPlugin);
   app.register(healthRoutes, { prefix: "/api" });
 
   return app;
