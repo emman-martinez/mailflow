@@ -1,19 +1,22 @@
 # Mailflow
 
-A full-stack email processing platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
+A full-stack email campaign platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
 
-> Status: actively under development.
+> Status: actively under development. Redis is running locally; the next milestone is adding BullMQ and the first queue producer.
 
 ## Current features
 
 - React + TypeScript + Tailwind CSS dashboard
-- React Router, Redux Toolkit, and TanStack Query foundation
+- Global light and dark theme with Redux Toolkit
+- React Router, Redux Toolkit, TanStack Query, and Axios foundation
 - Fastify API with structured Pino logs
-- PostgreSQL running in Docker
+- PostgreSQL and Redis running in Docker
 - Prisma ORM and versioned database migrations
-- JWT authentication
-- Argon2id password hashing
+- JWT authentication and Argon2id password hashing
 - Health endpoint with PostgreSQL connectivity check
+- Authenticated campaign creation and campaign retrieval endpoints
+- PostgreSQL models for campaigns, email jobs, and audit logs
+- Prisma Studio instructions for visually inspecting local data
 
 ## Tech stack
 
@@ -26,18 +29,21 @@ A full-stack email processing platform built to demonstrate asynchronous job que
 - React Router
 - Redux Toolkit
 - TanStack Query
+- Axios
 
-### Backend
+### Backend and infrastructure
 
 - Node.js
 - TypeScript
 - Fastify
 - Prisma ORM
 - PostgreSQL
+- Redis
 - Pino logging
 - Zod validation
 - JWT authentication
 - Argon2id password hashing
+- Docker Compose
 
 ## Prerequisites
 
@@ -86,9 +92,7 @@ Generate a secure JWT secret:
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Open `apps/api/.env` and replace the `JWT_SECRET` placeholder with the generated value.
-
-Your local file should contain:
+Open `apps/api/.env` and replace the `JWT_SECRET` placeholder with the generated value. Your local file should contain:
 
 ```env
 PORT=3001
@@ -96,18 +100,22 @@ WEB_ORIGIN=http://localhost:5173
 LOG_LEVEL=debug
 DATABASE_URL="postgresql://mailflow:mailflow_dev_password@localhost:5432/mailflow?schema=public"
 JWT_SECRET=your-generated-secret-here
+REDIS_URL=redis://localhost:6379
 ```
 
 Never commit `.env` files.
 
-### 4. Start PostgreSQL
+### 4. Start PostgreSQL and Redis
 
 ```powershell
-docker compose up -d postgres
+docker compose up -d
 docker compose ps
+docker compose exec redis redis-cli ping
 ```
 
-The PostgreSQL container should become healthy.
+Both containers should become healthy. The final command should return `PONG`.
+
+> Redis is used by BullMQ in the upcoming queue and worker milestones. It does not contain jobs until the application starts enqueueing them.
 
 ### 5. Apply database migrations
 
@@ -139,11 +147,7 @@ Open a terminal in the project root:
 npm run dev -w @mailflow/api
 ```
 
-The API runs at:
-
-```text
-http://localhost:3001
-```
+The API runs at `http://localhost:3001`.
 
 Verify it:
 
@@ -167,11 +171,7 @@ Open a second terminal in the project root:
 npm run dev -w @mailflow/web
 ```
 
-Open:
-
-```text
-http://localhost:5173
-```
+Open `http://localhost:5173`.
 
 ## Authentication endpoints
 
@@ -204,6 +204,45 @@ GET /api/auth/me
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
+## Campaign endpoints
+
+All campaign endpoints require this header:
+
+```http
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+### Create a campaign
+
+```http
+POST /api/campaigns
+```
+
+Example body:
+
+```json
+{
+  "name": "July product update",
+  "subject": "New features in Mailflow",
+  "body": "Hello! Here is our latest update.",
+  "recipients": ["first@example.com", "second@example.com"]
+}
+```
+
+### List your campaigns
+
+```http
+GET /api/campaigns
+```
+
+### Get one campaign and its jobs
+
+```http
+GET /api/campaigns/:campaignId
+```
+
+Use Postman (or another API client) to register, log in, save the JWT token as an environment variable, and send it as a Bearer token. The campaign endpoint currently saves campaign and email-job records in PostgreSQL. A later milestone will also enqueue each email job in BullMQ.
+
 ## Useful commands
 
 ```powershell
@@ -218,41 +257,63 @@ cd apps\api
 npx prisma studio --config .\prisma.config.ts --port 51212
 cd ..\..
 
-# View PostgreSQL container status
+# View container status
 docker compose ps
 
-# Stop containers but keep local database data
+# Verify that Redis is reachable
+docker compose exec redis redis-cli ping
+
+# Stop containers but keep local database and Redis data
 docker compose down
 
-# Stop containers and delete local database data
+# Stop containers and delete local database and Redis data
 docker compose down -v
 ```
 
-> Warning: `docker compose down -v` deletes your local PostgreSQL data.
+> Warning: `docker compose down -v` deletes your local PostgreSQL and Redis data.
 
 ## Project structure
 
 ```text
 mailflow/
-├─ apps/
-│  ├─ web/              # React frontend
-│  └─ api/              # Fastify API and Prisma schema
-├─ docs/                # Architecture and learning documentation
-├─ infra/               # Future infrastructure files
-├─ compose.yml          # Local PostgreSQL container
-└─ package.json         # npm workspaces configuration
+├── apps/
+│   ├── web/              # React frontend
+│   ├── api/              # Fastify API and Prisma schema
+│   └── worker/           # Future background worker service
+├── docs/                 # Architecture and learning documentation
+├── infra/                # Future infrastructure files
+├── compose.yml           # Local PostgreSQL and Redis containers
+└── package.json          # npm workspaces configuration
 ```
 
 ## Roadmap
 
 - [x] Frontend foundation
-- [x] PostgreSQL + Prisma
-- [x] Authentication
-- [ ] Campaign management
-- [ ] Redis + BullMQ queues
+- [x] Global light and dark theme
+- [x] PostgreSQL + Prisma database design
+- [x] Authentication and protected API routes
+- [x] Axios frontend authentication flow
+- [x] Campaign management API and Postman collection workflow
+- [x] Local Redis Docker service
+- [ ] BullMQ email queue producer
 - [ ] Separate email worker
 - [ ] Retry, backoff, and dead-letter queue
 - [ ] Real-time job monitoring
 - [ ] Scheduled campaigns
-- [ ] Testing and GitHub Actions
-- [ ] Sentry, Docker production setup, and deployment
+- [ ] Email-provider integration and safe development mail testing
+- [ ] Backend, frontend, and end-to-end tests
+- [ ] Structured error logs and Sentry monitoring
+- [ ] Docker production setup, GitHub Actions, and deployment
+- [ ] Architecture diagrams, screenshots, and portfolio case study
+
+## Learning checkpoint: current architecture
+
+```text
+React dashboard → Fastify API → PostgreSQL
+                         ↓
+                  Redis (ready)
+                         ↓
+              BullMQ worker (next milestones)
+```
+
+The API already persists campaigns and one `EmailJob` database record per recipient. The next step is to enqueue those records in BullMQ, then create a separate worker that processes them independently of the API request.
