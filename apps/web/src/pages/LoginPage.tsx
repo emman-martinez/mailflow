@@ -28,23 +28,25 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-6 text-slate-100">
-      <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-black/20">
-        <p className="text-sm font-semibold tracking-[0.2em] text-indigo-400 uppercase">
+    <main className="grid min-h-screen place-items-center bg-slate-50 px-6 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+      <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-900/10 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20">
+        <p className="text-sm font-semibold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-400">
           Mailflow
         </p>
 
-        <h1 className="mt-3 text-3xl font-bold text-white">Welcome back</h1>
+        <h1 className="mt-3 text-3xl font-bold text-slate-950 dark:text-white">
+          Welcome back
+        </h1>
 
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Sign in to manage your email campaigns and jobs.
         </p>
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Email
             <input
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-600"
               type="email"
               autoComplete="email"
               value={email}
@@ -54,10 +56,10 @@ export default function LoginPage() {
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Password
             <input
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20"
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-600"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -68,13 +70,13 @@ export default function LoginPage() {
           </label>
 
           {errorMessage && (
-            <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+            <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-300">
               {errorMessage}
             </p>
           )}
 
           <button
-            className="w-full rounded-lg bg-indigo-500 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loginMutation.isPending}
             type="submit"
           >
