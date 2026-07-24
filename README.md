@@ -118,7 +118,20 @@ npx prisma generate --config .\prisma.config.ts
 cd ..\..
 ```
 
-### 6. Start the API
+### 6. Explore the database with Prisma Studio (optional)
+
+Prisma Studio is a local web interface for browsing and editing PostgreSQL data without writing SQL. It is useful for inspecting users, campaigns, jobs, and audit logs as the application grows.
+
+```powershell
+cd apps\api
+npx prisma studio --config .\prisma.config.ts --port 51212
+```
+
+Open [http://localhost:51212](http://localhost:51212), then select a table such as `User` to inspect its records. Press `Ctrl + C` in the Prisma Studio terminal to stop it.
+
+> Do not edit `passwordHash` values manually. Passwords are intentionally stored as secure hashes, never as plain text.
+
+### 7. Start the API
 
 Open a terminal in the project root:
 
@@ -146,7 +159,7 @@ service  : api
 database : ok
 ```
 
-### 7. Start the frontend
+### 8. Start the frontend
 
 Open a second terminal in the project root:
 
@@ -199,6 +212,11 @@ npm run typecheck -w @mailflow/api
 
 # Build the frontend
 npm run build -w @mailflow/web
+
+# Open the visual database browser
+cd apps\api
+npx prisma studio --config .\prisma.config.ts --port 51212
+cd ..\..
 
 # View PostgreSQL container status
 docker compose ps
