@@ -9,6 +9,7 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
   REDIS_URL: z.string().url(),
+  DATABASE_URL: z.string().url(),
 });
 
 export const env = envSchema.parse(process.env);
