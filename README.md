@@ -132,7 +132,7 @@ Prisma Studio is a local web interface for browsing and editing PostgreSQL data 
 
 ```powershell
 cd apps\api
-npx prisma studio --config .\prisma.config.ts --port 51212
+npx prisma studio --config .\prisma.config.ts
 ```
 
 Open [http://localhost:51212](http://localhost:51212), then select a table such as `User` to inspect its records. Press `Ctrl + C` in the Prisma Studio terminal to stop it.

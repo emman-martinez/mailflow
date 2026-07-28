@@ -12,6 +12,7 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
   JWT_SECRET: z.string().min(32),
+  REDIS_URL: z.string().url(),
 });
 
 export const env = envSchema.parse(process.env);
