@@ -23,6 +23,7 @@ export const CampaignStatus = {
   QUEUED: 'QUEUED',
   PROCESSING: 'PROCESSING',
   COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
   CANCELED: 'CANCELED'
 } as const
 

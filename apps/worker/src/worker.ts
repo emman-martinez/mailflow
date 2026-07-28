@@ -1,0 +1,180 @@
+import { Worker } from "bullmq";
+import { EMAIL_QUEUE_NAME, type EmailQueueJobData } from "./email.queue.js";
+import { prisma } from "./lib/prisma.js";
+import { redisConnection } from "./lib/redis.js";
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown worker error.";
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function simulateEmailDelivery(
+  recipientEmail: string,
+  subject: string,
+): Promise<void> {
+  await wait(1_000);
+
+  // Use an address containing "+fail@" to intentionally test retries.
+  if (recipientEmail.includes("+fail@")) {
+    throw new Error("Simulated email provider failure.");
+  }
+
+  console.info(`Email delivered to ${recipientEmail}: ${subject}`);
+}
+
+const worker = new Worker<EmailQueueJobData>(
+  EMAIL_QUEUE_NAME,
+  async (job) => {
+    const attemptNumber = job.attemptsMade + 1;
+
+    console.info({
+      event: "email_job_started",
+      bullmqJobId: job.id,
+      emailJobId: job.data.emailJobId,
+      recipientEmail: job.data.recipientEmail,
+      attemptNumber,
+    });
+
+    await prisma.$transaction(async (transaction) => {
+      await transaction.emailJob.update({
+        where: {
+          id: job.data.emailJobId,
+        },
+        data: {
+          status: "ACTIVE",
+          attemptsMade: attemptNumber,
+          processedAt: new Date(),
+          failureReason: null,
+        },
+      });
+
+      await transaction.campaign.update({
+        where: {
+          id: job.data.campaignId,
+        },
+        data: {
+          status: "PROCESSING",
+        },
+      });
+    });
+
+    try {
+      await simulateEmailDelivery(job.data.recipientEmail, job.data.subject);
+
+      await prisma.emailJob.update({
+        where: {
+          id: job.data.emailJobId,
+        },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+          failureReason: null,
+        },
+      });
+
+      const unfinishedJobCount = await prisma.emailJob.count({
+        where: {
+          campaignId: job.data.campaignId,
+          status: {
+            not: "COMPLETED",
+          },
+        },
+      });
+
+      if (unfinishedJobCount === 0) {
+        await prisma.campaign.update({
+          where: {
+            id: job.data.campaignId,
+          },
+          data: {
+            status: "COMPLETED",
+          },
+        });
+      }
+
+      console.info({
+        event: "email_job_completed",
+        bullmqJobId: job.id,
+        emailJobId: job.data.emailJobId,
+      });
+
+      return {
+        deliveredAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      const failureReason = getErrorMessage(error);
+      const maximumAttempts = job.opts.attempts ?? 1;
+      const isFinalAttempt = attemptNumber >= maximumAttempts;
+
+      await prisma.emailJob.update({
+        where: {
+          id: job.data.emailJobId,
+        },
+        data: {
+          status: isFinalAttempt ? "FAILED" : "RETRYING",
+          attemptsMade: attemptNumber,
+          failureReason,
+        },
+      });
+
+      if (isFinalAttempt) {
+        await prisma.campaign.update({
+          where: {
+            id: job.data.campaignId,
+          },
+          data: {
+            status: "FAILED",
+          },
+        });
+      }
+
+      console.error({
+        event: "email_job_failed",
+        bullmqJobId: job.id,
+        emailJobId: job.data.emailJobId,
+        attemptNumber,
+        failureReason,
+      });
+
+      throw error;
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 2,
+  },
+);
+
+worker.on("error", (error) => {
+  console.error({
+    event: "worker_error",
+    message: getErrorMessage(error),
+  });
+});
+
+console.info(
+  `Mailflow worker is listening to the "${EMAIL_QUEUE_NAME}" queue.`,
+);
+
+async function shutdown(signal: string): Promise<void> {
+  console.info(`Received ${signal}. Closing worker gracefully...`);
+
+  await worker.close();
+  await redisConnection.quit();
+  await prisma.$disconnect();
+
+  process.exit(0);
+}
+
+process.once("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+
+process.once("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
