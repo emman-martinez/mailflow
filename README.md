@@ -295,9 +295,10 @@ mailflow/
 - [x] Axios frontend authentication flow
 - [x] Campaign management API and Postman collection workflow
 - [x] Local Redis Docker service
-- [ ] BullMQ email queue producer
-- [ ] Separate email worker
-- [ ] Retry, backoff, and dead-letter queue
+- [x] BullMQ email queue producer and Redis-backed campaign jobs
+- [ ] Separate email worker (scaffolded with its own environment and Prisma client; processing flow in progress)
+- [ ] Retry and exponential backoff (configured on the queue; worker verification in progress)
+- [ ] Dead-letter queue and failed-job recovery controls
 - [ ] Real-time job monitoring
 - [ ] Scheduled campaigns
 - [ ] Email-provider integration and safe development mail testing
@@ -305,6 +306,14 @@ mailflow/
 - [ ] Structured error logs and Sentry monitoring
 - [ ] Docker production setup, GitHub Actions, and deployment
 - [ ] Architecture diagrams, screenshots, and portfolio case study
+
+## Overall progress
+
+**Estimated completion: 35%**
+
+`███████░░░░░░░░░░░░░ 35%`
+
+> This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
 ## Learning checkpoint: current architecture
 
@@ -316,4 +325,4 @@ React dashboard → Fastify API → PostgreSQL
               BullMQ worker (next milestones)
 ```
 
-The API already persists campaigns and one `EmailJob` database record per recipient. The next step is to enqueue those records in BullMQ, then create a separate worker that processes them independently of the API request.
+The API now persists campaigns and one `EmailJob` database record per recipient, then enqueues each job in BullMQ. The worker workspace has its own environment configuration and Prisma client; the next step is to run the worker so it claims jobs and updates their statuses independently of the API request.
