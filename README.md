@@ -115,7 +115,7 @@ docker compose exec redis redis-cli ping
 
 Both containers should become healthy. The final command should return `PONG`.
 
-> Redis is used by BullMQ in the upcoming queue and worker milestones. It does not contain jobs until the application starts enqueueing them.
+> Redis is the backing store for BullMQ. It contains queue data when campaigns are created and jobs are waiting or being processed.
 
 ### 5. Apply database migrations
 
@@ -132,7 +132,7 @@ Prisma Studio is a local web interface for browsing and editing PostgreSQL data 
 
 ```powershell
 cd apps\api
-npx prisma studio --config .\prisma.config.ts
+npx prisma studio --config .\prisma.config.ts --port 51212
 ```
 
 Open [http://localhost:51212](http://localhost:51212), then select a table such as `User` to inspect its records. Press `Ctrl + C` in the Prisma Studio terminal to stop it.
@@ -172,6 +172,22 @@ npm run dev -w @mailflow/web
 ```
 
 Open `http://localhost:5173`.
+
+### 9. Start the worker
+
+Open a third terminal in the project root:
+
+```powershell
+npm run dev -w @mailflow/worker
+```
+
+Expected startup output:
+
+```text
+Mailflow worker is listening to the "email-delivery" queue.
+```
+
+Keep this terminal open while creating campaigns. The worker claims waiting BullMQ jobs and updates their PostgreSQL status independently of the API request.
 
 ## Authentication endpoints
 
@@ -241,13 +257,16 @@ GET /api/campaigns
 GET /api/campaigns/:campaignId
 ```
 
-Use Postman (or another API client) to register, log in, save the JWT token as an environment variable, and send it as a Bearer token. The campaign endpoint currently saves campaign and email-job records in PostgreSQL. A later milestone will also enqueue each email job in BullMQ.
+Use Postman (or another API client) to register, log in, save the JWT token as an environment variable, and send it as a Bearer token. The campaign endpoint saves campaign and email-job records in PostgreSQL, then enqueues each email job in BullMQ.
 
 ## Useful commands
 
 ```powershell
 # Type-check the API
 npm run typecheck -w @mailflow/api
+
+# Type-check the worker
+npm run typecheck -w @mailflow/worker
 
 # Build the frontend
 npm run build -w @mailflow/web
