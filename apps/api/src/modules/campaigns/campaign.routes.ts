@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { emailQueue } from "../queues/email.queue.js";
 import {
   campaignIdParamsSchema,
   createCampaignBodySchema,
@@ -40,6 +41,12 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           },
         },
         include: {
+          jobs: {
+            select: {
+              id: true,
+              recipientEmail: true,
+            },
+          },
           _count: {
             select: {
               jobs: true,
@@ -64,6 +71,64 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
       return createdCampaign;
     });
 
+    const delay = campaign.scheduledAt
+      ? Math.max(campaign.scheduledAt.getTime() - Date.now(), 0)
+      : undefined;
+
+    const queuedJobs = await emailQueue.addBulk(
+      campaign.jobs.map((job) => ({
+        name: "send-email",
+        data: {
+          emailJobId: job.id,
+          campaignId: campaign.id,
+          recipientEmail: job.recipientEmail,
+          subject: campaign.subject,
+          body: campaign.body,
+        },
+        opts: {
+          jobId: job.id,
+          delay,
+        },
+      })),
+    );
+
+    await app.prisma.$transaction(async (transaction) => {
+      await Promise.all(
+        queuedJobs.map((queuedJob) =>
+          transaction.emailJob.update({
+            where: {
+              id: queuedJob.data.emailJobId,
+            },
+            data: {
+              bullmqJobId: queuedJob.id,
+            },
+          }),
+        ),
+      );
+
+      await transaction.campaign.update({
+        where: {
+          id: campaign.id,
+        },
+        data: {
+          status: campaign.scheduledAt ? "SCHEDULED" : "QUEUED",
+        },
+      });
+
+      await transaction.auditLog.create({
+        data: {
+          action: "CAMPAIGN_ENQUEUED",
+          entityType: "Campaign",
+          entityId: campaign.id,
+          actorId: request.user.sub,
+          metadata: {
+            queueName: "email-delivery",
+            jobCount: queuedJobs.length,
+          },
+        },
+      });
+    });
+
     app.log.info(
       {
         campaignId: campaign.id,
@@ -78,11 +143,12 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
         id: campaign.id,
         name: campaign.name,
         subject: campaign.subject,
-        status: campaign.status,
+        status: campaign.scheduledAt ? "SCHEDULED" : "QUEUED",
         scheduledAt: campaign.scheduledAt,
         timezone: campaign.timezone,
         createdAt: campaign.createdAt,
         jobCount: campaign._count.jobs,
+        queueJobCount: queuedJobs.length,
       },
     });
   });
