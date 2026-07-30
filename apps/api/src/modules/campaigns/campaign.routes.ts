@@ -3,6 +3,7 @@ import { emailQueue } from "../queues/email.queue.js";
 import {
   campaignIdParamsSchema,
   createCampaignBodySchema,
+  emailJobParamsSchema,
 } from "./campaign.schemas.js";
 
 export const campaignRoutes: FastifyPluginAsync = async (app) => {
@@ -182,6 +183,146 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
         jobCount: campaign._count.jobs,
       })),
     };
+  });
+
+  app.post("/:campaignId/jobs/:emailJobId/retry", async (request, reply) => {
+    const parsedParams = emailJobParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.code(400).send({
+        message: "Invalid campaign or email job ID.",
+      });
+    }
+
+    const { campaignId, emailJobId } = parsedParams.data;
+
+    const emailJob = await app.prisma.emailJob.findFirst({
+      where: {
+        id: emailJobId,
+        campaignId,
+        campaign: {
+          ownerId: request.user.sub,
+        },
+      },
+      include: {
+        campaign: true,
+      },
+    });
+
+    if (!emailJob) {
+      return reply.code(404).send({
+        message: "Email job not found.",
+      });
+    }
+
+    if (emailJob.status !== "FAILED") {
+      return reply.code(409).send({
+        message: "Only failed email jobs can be requeued.",
+      });
+    }
+
+    const reservedJob = await app.prisma.emailJob.updateMany({
+      where: {
+        id: emailJob.id,
+        status: "FAILED",
+      },
+      data: {
+        status: "RETRYING",
+      },
+    });
+
+    if (reservedJob.count === 0) {
+      return reply.code(409).send({
+        message: "This email job is already being requeued.",
+      });
+    }
+
+    const bullmqJobId = `retry-${emailJob.id}-${Date.now()}`;
+
+    try {
+      await emailQueue.add(
+        "send-email",
+        {
+          emailJobId: emailJob.id,
+          campaignId: emailJob.campaignId,
+          recipientEmail: emailJob.recipientEmail,
+          subject: emailJob.campaign.subject,
+          body: emailJob.campaign.body,
+        },
+        {
+          jobId: bullmqJobId,
+        },
+      );
+    } catch (error) {
+      await app.prisma.emailJob.update({
+        where: {
+          id: emailJob.id,
+        },
+        data: {
+          status: "FAILED",
+        },
+      });
+
+      throw error;
+    }
+
+    await app.prisma.$transaction(async (transaction) => {
+      await transaction.emailJob.update({
+        where: {
+          id: emailJob.id,
+        },
+        data: {
+          status: "WAITING",
+          bullmqJobId,
+          attemptsMade: 0,
+          failureReason: null,
+          processedAt: null,
+          completedAt: null,
+        },
+      });
+
+      await transaction.campaign.update({
+        where: {
+          id: emailJob.campaignId,
+        },
+        data: {
+          status: "QUEUED",
+        },
+      });
+
+      await transaction.auditLog.create({
+        data: {
+          action: "EMAIL_JOB_REQUEUED",
+          entityType: "EmailJob",
+          entityId: emailJob.id,
+          actorId: request.user.sub,
+          metadata: {
+            campaignId: emailJob.campaignId,
+            previousBullmqJobId: emailJob.bullmqJobId,
+            newBullmqJobId: bullmqJobId,
+          },
+        },
+      });
+    });
+
+    app.log.info(
+      {
+        campaignId: emailJob.campaignId,
+        emailJobId: emailJob.id,
+        bullmqJobId,
+        userId: request.user.sub,
+      },
+      "Failed email job requeued",
+    );
+
+    return reply.code(202).send({
+      emailJob: {
+        id: emailJob.id,
+        status: "WAITING",
+        bullmqJobId,
+        attemptsMade: 0,
+      },
+    });
   });
 
   app.get("/:campaignId", async (request, reply) => {

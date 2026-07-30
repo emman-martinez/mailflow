@@ -15,3 +15,8 @@ export const createCampaignBodySchema = z.object({
 export const campaignIdParamsSchema = z.object({
   campaignId: z.string().cuid(),
 });
+
+export const emailJobParamsSchema = z.object({
+  campaignId: z.string().cuid(),
+  emailJobId: z.string().cuid(),
+});
