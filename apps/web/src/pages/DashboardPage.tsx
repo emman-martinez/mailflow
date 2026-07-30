@@ -1,68 +1,66 @@
-type JobStatus = "completed" | "active" | "waiting" | "failed";
+import { getApiErrorMessage } from "../lib/api/client";
+import { type EmailJobStatus } from "../features/dashboard/dashboard.api";
+import { useDashboardOverview } from "../features/dashboard/dashboard.hooks";
 
-type Job = {
-  id: string;
-  recipient: string;
-  campaign: string;
-  status: JobStatus;
-  attempts: string;
-  createdAt: string;
-};
-
-const stats = [
-  { label: "Queued jobs", value: "24", change: "+12% today" },
-  { label: "Processing", value: "3", change: "2 workers online" },
-  { label: "Delivered", value: "1,284", change: "98.6% success rate" },
-  { label: "Failed", value: "7", change: "Needs attention" },
-];
-
-const jobs: Job[] = [
-  {
-    id: "job_01J8KX",
-    recipient: "ana@example.com",
-    campaign: "Welcome sequence",
-    status: "completed",
-    attempts: "1 / 3",
-    createdAt: "Just now",
-  },
-  {
-    id: "job_01J8KW",
-    recipient: "maria@example.com",
-    campaign: "July product update",
-    status: "active",
-    attempts: "1 / 3",
-    createdAt: "1 minute ago",
-  },
-  {
-    id: "job_01J8KV",
-    recipient: "john@example.com",
-    campaign: "Welcome sequence",
-    status: "waiting",
-    attempts: "0 / 3",
-    createdAt: "2 minutes ago",
-  },
-  {
-    id: "job_01J8KU",
-    recipient: "lucas@example.com",
-    campaign: "July product update",
-    status: "failed",
-    attempts: "3 / 3",
-    createdAt: "4 minutes ago",
-  },
-];
-
-const statusStyles: Record<JobStatus, string> = {
-  completed:
+const statusStyles: Record<EmailJobStatus, string> = {
+  COMPLETED:
     "bg-emerald-500/10 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20",
-  active:
+  ACTIVE:
     "bg-sky-500/10 text-sky-700 ring-sky-600/20 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/20",
-  waiting:
+  WAITING:
     "bg-amber-500/10 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/20",
-  failed:
+  RETRYING:
+    "bg-orange-500/10 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-400/20",
+  FAILED:
     "bg-rose-500/10 text-rose-700 ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-400/20",
+  CANCELED:
+    "bg-slate-500/10 text-slate-700 ring-slate-600/20 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/20",
 };
+
+function formatStatus(status: EmailJobStatus): string {
+  return status.charAt(0) + status.slice(1).toLowerCase();
+}
+
+function formatDate(dateValue: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(dateValue));
+}
 
 function DashboardPage() {
+  const { data, error, isLoading } = useDashboardOverview();
+
+  const emailJobs = data?.emailJobs.byStatus;
+  const waitingJobs = emailJobs?.WAITING ?? 0;
+  const retryingJobs = emailJobs?.RETRYING ?? 0;
+  const activeJobs = emailJobs?.ACTIVE ?? 0;
+  const completedJobs = emailJobs?.COMPLETED ?? 0;
+  const failedJobs = emailJobs?.FAILED ?? 0;
+
+  const stats = [
+    {
+      label: "Queued jobs",
+      value: waitingJobs + retryingJobs,
+      detail: `${waitingJobs} waiting · ${retryingJobs} retrying`,
+    },
+    {
+      label: "Processing",
+      value: activeJobs,
+      detail: "Currently claimed by workers",
+    },
+    {
+      label: "Delivered",
+      value: completedJobs,
+      detail: "Completed email jobs",
+    },
+    {
+      label: "Failed",
+      value: failedJobs,
+      detail: "Needs attention or recovery",
+    },
+  ];
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
@@ -77,7 +75,7 @@ function DashboardPage() {
             </h1>
 
             <p className="mt-2 text-slate-600 dark:text-slate-400">
-              Monitor asynchronous email jobs in real time.
+              Monitor your asynchronous email jobs.
             </p>
           </div>
 
@@ -88,6 +86,12 @@ function DashboardPage() {
             Create campaign
           </button>
         </header>
+
+        {error ? (
+          <div className="mb-8 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200">
+            Could not load dashboard data: {getApiErrorMessage(error)}
+          </div>
+        ) : null}
 
         <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (
@@ -100,11 +104,11 @@ function DashboardPage() {
               </p>
 
               <p className="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
-                {stat.value}
+                {isLoading ? "—" : stat.value}
               </p>
 
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
-                {stat.change}
+                {stat.detail}
               </p>
             </article>
           ))}
@@ -118,13 +122,13 @@ function DashboardPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Jobs added to the email delivery queue.
+                Auto-refreshes every five seconds.
               </p>
             </div>
 
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              Live updates
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-sky-500/10 px-3 py-1.5 text-sm font-medium text-sky-700 dark:text-sky-300">
+              <span className="h-2 w-2 rounded-full bg-sky-400" />
+              API polling
             </span>
           </div>
 
@@ -136,19 +140,41 @@ function DashboardPage() {
                   <th className="px-6 py-4 font-medium">Campaign</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Attempts</th>
-                  <th className="px-6 py-4 font-medium">Created</th>
+                  <th className="px-6 py-4 font-medium">Updated</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {jobs.map((job) => (
+                {isLoading ? (
+                  <tr>
+                    <td
+                      className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
+                      colSpan={5}
+                    >
+                      Loading queue activity...
+                    </td>
+                  </tr>
+                ) : null}
+
+                {!isLoading && data?.recentJobs.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
+                      colSpan={5}
+                    >
+                      No email jobs yet. Create a campaign to start the queue.
+                    </td>
+                  </tr>
+                ) : null}
+
+                {data?.recentJobs.map((job) => (
                   <tr
                     key={job.id}
                     className="transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
                   >
                     <td className="px-6 py-4">
                       <p className="font-medium text-slate-950 dark:text-white">
-                        {job.recipient}
+                        {job.recipientEmail}
                       </p>
 
                       <p className="mt-1 font-mono text-xs text-slate-500">
@@ -157,25 +183,23 @@ function DashboardPage() {
                     </td>
 
                     <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                      {job.campaign}
+                      {job.campaign.name}
                     </td>
 
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-                          statusStyles[job.status]
-                        }`}
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyles[job.status]}`}
                       >
-                        {job.status}
+                        {formatStatus(job.status)}
                       </span>
                     </td>
 
                     <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                      {job.attempts}
+                      {job.attemptsMade} / {job.maxAttempts}
                     </td>
 
                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
-                      {job.createdAt}
+                      {formatDate(job.updatedAt)}
                     </td>
                   </tr>
                 ))}
