@@ -40,3 +40,14 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
   return response.data;
 }
+
+export async function retryEmailJob(input: {
+  campaignId: string;
+  emailJobId: string;
+}) {
+  const response = await apiClient.post(
+    `/api/campaigns/${input.campaignId}/jobs/${input.emailJobId}/retry`,
+  );
+
+  return response.data;
+}

@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { getApiErrorMessage } from "../lib/api/client";
 import { type EmailJobStatus } from "../features/dashboard/dashboard.api";
-import { useDashboardOverview } from "../features/dashboard/dashboard.hooks";
+import {
+  useDashboardOverview,
+  useRetryEmailJob,
+} from "../features/dashboard/dashboard.hooks";
 
 const statusStyles: Record<EmailJobStatus, string> = {
   COMPLETED:
@@ -31,6 +34,7 @@ function formatDate(dateValue: string): string {
 
 function DashboardPage() {
   const { data, error, isLoading } = useDashboardOverview();
+  const retryEmailJobMutation = useRetryEmailJob();
 
   const emailJobs = data?.emailJobs.byStatus;
   const waitingJobs = emailJobs?.WAITING ?? 0;
@@ -94,6 +98,13 @@ function DashboardPage() {
           </div>
         ) : null}
 
+        {retryEmailJobMutation.isError ? (
+          <div className="mb-8 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200">
+            Could not requeue the email job:{" "}
+            {getApiErrorMessage(retryEmailJobMutation.error)}
+          </div>
+        ) : null}
+
         <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (
             <article
@@ -142,6 +153,7 @@ function DashboardPage() {
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Attempts</th>
                   <th className="px-6 py-4 font-medium">Updated</th>
+                  <th className="px-6 py-4 font-medium">Actions</th>
                 </tr>
               </thead>
 
@@ -150,7 +162,7 @@ function DashboardPage() {
                   <tr>
                     <td
                       className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
-                      colSpan={5}
+                      colSpan={6}
                     >
                       Loading queue activity...
                     </td>
@@ -161,7 +173,7 @@ function DashboardPage() {
                   <tr>
                     <td
                       className="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
-                      colSpan={5}
+                      colSpan={6}
                     >
                       No email jobs yet. Create a campaign to start the queue.
                     </td>
@@ -201,6 +213,28 @@ function DashboardPage() {
 
                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                       {formatDate(job.updatedAt)}
+                    </td>
+
+                    <td className="px-6 py-4">
+                      {job.status === "FAILED" ? (
+                        <button
+                          className="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-950/40"
+                          disabled={retryEmailJobMutation.isPending}
+                          onClick={() => {
+                            retryEmailJobMutation.mutate({
+                              campaignId: job.campaign.id,
+                              emailJobId: job.id,
+                            });
+                          }}
+                          type="button"
+                        >
+                          {retryEmailJobMutation.isPending
+                            ? "Requeueing..."
+                            : "Retry job"}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
