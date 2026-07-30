@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { getApiErrorMessage } from "../lib/api/client";
 import { type EmailJobStatus } from "../features/dashboard/dashboard.api";
 import { useDashboardOverview } from "../features/dashboard/dashboard.hooks";
@@ -79,12 +80,12 @@ function DashboardPage() {
             </p>
           </div>
 
-          <button
+          <Link
             className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-slate-50 dark:focus:ring-offset-slate-950"
-            type="button"
+            to="/campaigns/new"
           >
             Create campaign
-          </button>
+          </Link>
         </header>
 
         {error ? (

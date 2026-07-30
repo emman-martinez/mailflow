@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import DashboardPage from "../pages/DashboardPage";
 import LoginPage from "../pages/LoginPage";
+import CreateCampaignPage from "../pages/CreateCampaignPage";
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +18,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <DashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/campaigns/new",
+    element: (
+      <ProtectedRoute>
+        <CreateCampaignPage />
       </ProtectedRoute>
     ),
   },
