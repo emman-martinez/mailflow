@@ -197,6 +197,18 @@ Keep this terminal open while creating campaigns. The worker claims waiting Bull
 
 Open the dashboard at `http://localhost:5173/dashboard` and open the browser developer console. Create a campaign with normal test recipients from the campaign form.
 
+Use these values for a reproducible immediate-delivery test:
+
+```text
+Campaign name: Realtime worker test
+Email subject: Your Mailflow test is processing
+Message: This campaign verifies that Mailflow can process email jobs and report status updates in real time.
+Recipients:
+realtime-one@example.com
+realtime-two@example.com
+Schedule: leave empty for immediate processing
+```
+
 The worker should publish status events through Redis, the API should forward them through Socket.IO, and the browser console should show events such as:
 
 ```text
