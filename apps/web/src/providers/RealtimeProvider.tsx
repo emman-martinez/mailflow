@@ -2,19 +2,36 @@ import {
   createContext,
   useContext,
   useEffect,
+  useState,
   type PropsWithChildren,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { realtimeSocket } from "../lib/realtime/socket";
+
+type JobStatusEvent = {
+  type: "email_job_updated";
+  emailJobId: string;
+  campaignId: string;
+  status:
+    | "WAITING"
+    | "ACTIVE"
+    | "RETRYING"
+    | "COMPLETED"
+    | "FAILED"
+    | "CANCELED";
+  attemptsMade: number;
+  updatedAt: string;
+};
 
 const RealtimeContext = createContext(false);
 
 export function RealtimeProvider({ children }: PropsWithChildren) {
-  function handleJobUpdated(payload: unknown) {
-    console.info("Email job updated:", payload);
-  }
+  const queryClient = useQueryClient();
+  const [isConnected, setIsConnected] = useState(realtimeSocket.connected);
 
   useEffect(() => {
     function handleConnect() {
+      setIsConnected(true);
       console.info("Connected to Mailflow realtime server.");
     }
 
@@ -23,13 +40,23 @@ export function RealtimeProvider({ children }: PropsWithChildren) {
     }
 
     function handleDisconnect(reason: string) {
+      setIsConnected(false);
       console.info("Disconnected from realtime server:", reason);
+    }
+
+    function handleJobUpdated(payload: JobStatusEvent) {
+      console.info("Email job updated:", payload);
+
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard", "overview"],
+      });
     }
 
     realtimeSocket.on("connect", handleConnect);
     realtimeSocket.on("realtime:ready", handleReady);
     realtimeSocket.on("disconnect", handleDisconnect);
     realtimeSocket.on("email_job_updated", handleJobUpdated);
+
     realtimeSocket.connect();
 
     return () => {
@@ -39,10 +66,10 @@ export function RealtimeProvider({ children }: PropsWithChildren) {
       realtimeSocket.off("email_job_updated", handleJobUpdated);
       realtimeSocket.disconnect();
     };
-  }, []);
+  }, [queryClient]);
 
   return (
-    <RealtimeContext.Provider value={realtimeSocket.connected}>
+    <RealtimeContext.Provider value={isConnected}>
       {children}
     </RealtimeContext.Provider>
   );

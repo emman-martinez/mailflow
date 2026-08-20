@@ -5,6 +5,7 @@ import {
   useDashboardOverview,
   useRetryEmailJob,
 } from "../features/dashboard/dashboard.hooks";
+import { useRealtimeConnection } from "../providers/RealtimeProvider";
 
 const statusStyles: Record<EmailJobStatus, string> = {
   COMPLETED:
@@ -33,6 +34,7 @@ function formatDate(dateValue: string): string {
 }
 
 function DashboardPage() {
+  const isRealtimeConnected = useRealtimeConnection();
   const { data, error, isLoading } = useDashboardOverview();
   const retryEmailJobMutation = useRetryEmailJob();
 
@@ -132,15 +134,24 @@ function DashboardPage() {
               <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
                 Recent jobs
               </h2>
-
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Auto-refreshes every five seconds.
+                Updates instantly when the worker changes a job status.
               </p>
             </div>
 
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-sky-500/10 px-3 py-1.5 text-sm font-medium text-sky-700 dark:text-sky-300">
-              <span className="h-2 w-2 rounded-full bg-sky-400" />
-              API polling
+            <span
+              className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${
+                isRealtimeConnected
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isRealtimeConnected ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              {isRealtimeConnected ? "Live updates" : "Reconnecting"}
             </span>
           </div>
 
