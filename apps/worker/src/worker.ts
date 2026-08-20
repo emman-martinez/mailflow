@@ -1,10 +1,31 @@
 import { Worker } from "bullmq";
+import { JOB_EVENTS_CHANNEL, type JobStatusEvent } from "./realtime/events.js";
 import { EMAIL_QUEUE_NAME, type EmailQueueJobData } from "./email.queue.js";
 import { prisma } from "./lib/prisma.js";
-import { redisConnection } from "./lib/redis.js";
+import { eventPublisher, redisConnection } from "./lib/redis.js";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown worker error.";
+}
+
+async function publishJobStatus(
+  event: Omit<JobStatusEvent, "type" | "updatedAt">,
+): Promise<void> {
+  const payload: JobStatusEvent = {
+    type: "email_job_updated",
+    ...event,
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    await eventPublisher.publish(JOB_EVENTS_CHANNEL, JSON.stringify(payload));
+  } catch (error) {
+    console.error({
+      event: "realtime_publish_failed",
+      message: getErrorMessage(error),
+      emailJobId: event.emailJobId,
+    });
+  }
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -63,6 +84,13 @@ const worker = new Worker<EmailQueueJobData>(
       });
     });
 
+    await publishJobStatus({
+      emailJobId: job.data.emailJobId,
+      campaignId: job.data.campaignId,
+      status: "ACTIVE",
+      attemptsMade: attemptNumber,
+    });
+
     try {
       await simulateEmailDelivery(job.data.recipientEmail, job.data.subject);
 
@@ -75,6 +103,13 @@ const worker = new Worker<EmailQueueJobData>(
           completedAt: new Date(),
           failureReason: null,
         },
+      });
+
+      await publishJobStatus({
+        emailJobId: job.data.emailJobId,
+        campaignId: job.data.campaignId,
+        status: "COMPLETED",
+        attemptsMade: attemptNumber,
       });
 
       const unfinishedJobCount = await prisma.emailJob.count({
@@ -122,6 +157,13 @@ const worker = new Worker<EmailQueueJobData>(
         },
       });
 
+      await publishJobStatus({
+        emailJobId: job.data.emailJobId,
+        campaignId: job.data.campaignId,
+        status: isFinalAttempt ? "FAILED" : "RETRYING",
+        attemptsMade: attemptNumber,
+      });
+
       if (isFinalAttempt) {
         await prisma.campaign.update({
           where: {
@@ -165,6 +207,7 @@ async function shutdown(signal: string): Promise<void> {
   console.info(`Received ${signal}. Closing worker gracefully...`);
 
   await worker.close();
+  await eventPublisher.quit();
   await redisConnection.quit();
   await prisma.$disconnect();
 

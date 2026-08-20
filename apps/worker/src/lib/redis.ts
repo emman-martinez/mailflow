@@ -4,3 +4,5 @@ import { env } from "../config/env.js";
 export const redisConnection = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
 });
+
+export const eventPublisher = redisConnection.duplicate();
