@@ -2,7 +2,7 @@
 
 A full-stack email campaign platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
 
-> Status: actively under development. Redis is running locally; the next milestone is adding BullMQ and the first queue producer.
+> Status: actively under development. The queue, worker, scheduling, recovery, and real-time event foundations are implemented; production hardening is next.
 
 ## Current features
 
@@ -17,6 +17,8 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - Authenticated campaign creation and campaign retrieval endpoints
 - PostgreSQL models for campaigns, email jobs, and audit logs
 - Prisma Studio instructions for visually inspecting local data
+- Socket.IO browser connection with Redis Pub/Sub event bridge
+- Worker event publishing for email-job status changes (being verified)
 
 ## Tech stack
 
@@ -39,6 +41,8 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - Prisma ORM
 - PostgreSQL
 - Redis
+- BullMQ
+- Socket.IO
 - Pino logging
 - Zod validation
 - JWT authentication
@@ -189,6 +193,25 @@ Mailflow worker is listening to the "email-delivery" queue.
 
 Keep this terminal open while creating campaigns. The worker claims waiting BullMQ jobs and updates their PostgreSQL status independently of the API request.
 
+### 10. Verify real-time job events
+
+Open the dashboard at `http://localhost:5173/dashboard` and open the browser developer console. Create a campaign with normal test recipients from the campaign form.
+
+The worker should publish status events through Redis, the API should forward them through Socket.IO, and the browser console should show events such as:
+
+```text
+Email job updated: { status: "ACTIVE", ... }
+Email job updated: { status: "COMPLETED", ... }
+```
+
+For a retry test, use a recipient containing `+fail@`, such as `test+fail@example.com`. The expected event sequence is:
+
+```text
+ACTIVE → RETRYING → RETRYING → FAILED
+```
+
+The event channel is `mailflow:job-events`. PostgreSQL remains the source of truth; Redis Pub/Sub transports live notifications and does not replace durable database state.
+
 ## Authentication endpoints
 
 ### Register
@@ -320,8 +343,8 @@ mailflow/
 - [x] Failed-job recovery controls with manual requeue actions
 - [x] Live dashboard polling, browser campaign creation, and dashboard retry action
 - [x] Scheduled campaigns with delayed BullMQ jobs
-- [ ] Real-time job monitoring
-- [ ] Scheduled campaigns
+- [x] Socket.IO connection and Redis Pub/Sub event bridge
+- [ ] Live dashboard updates driven by worker events (event publishing verification in progress)
 - [ ] Email-provider integration and safe development mail testing
 - [ ] Backend, frontend, and end-to-end tests
 - [ ] Structured error logs and Sentry monitoring
@@ -330,9 +353,9 @@ mailflow/
 
 ## Overall progress
 
-**Estimated completion: 48%**
+**Estimated completion: 50%**
 
-`██████████░░░░░░░░░░ 48%`
+`██████████░░░░░░░░░░ 50%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
@@ -346,4 +369,4 @@ React dashboard → Fastify API → PostgreSQL
                  Worker service
 ```
 
-The API persists campaigns and one `EmailJob` database record per recipient, then enqueues each job in BullMQ. Immediate campaigns are processed by the worker, while scheduled campaigns use BullMQ delays before becoming available to the worker. The dashboard currently polls the API; the next monitoring milestone is live event updates without polling.
+For live monitoring, the worker publishes job-status events to Redis Pub/Sub. The API subscribes to `mailflow:job-events` and broadcasts those events through Socket.IO to connected React clients. The dashboard still polls TanStack Query as a fallback; the next frontend milestone is invalidating the query immediately when a Socket.IO event arrives.
