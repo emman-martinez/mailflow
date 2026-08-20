@@ -315,9 +315,10 @@ mailflow/
 - [x] Campaign management API and Postman collection workflow
 - [x] Local Redis Docker service
 - [x] BullMQ email queue producer and Redis-backed campaign jobs
-- [ ] Separate email worker (scaffolded with its own environment and Prisma client; processing flow in progress)
-- [ ] Retry and exponential backoff (configured on the queue; worker verification in progress)
-- [ ] Dead-letter queue and failed-job recovery controls
+- [x] Separate email worker with PostgreSQL job state updates
+- [x] Retry and exponential backoff
+- [x] Failed-job recovery controls with manual requeue actions
+- [x] Live dashboard polling, browser campaign creation, and dashboard retry action
 - [ ] Real-time job monitoring
 - [ ] Scheduled campaigns
 - [ ] Email-provider integration and safe development mail testing
@@ -328,9 +329,9 @@ mailflow/
 
 ## Overall progress
 
-**Estimated completion: 35%**
+**Estimated completion: 45%**
 
-`███████░░░░░░░░░░░░░ 35%`
+`█████████░░░░░░░░░░░ 45%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
