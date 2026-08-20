@@ -26,7 +26,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
   await app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
     sign: {
-      expiresIn: "15m",
+      expiresIn: env.JWT_EXPIRES_IN,
     },
   });
 

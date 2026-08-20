@@ -9,6 +9,10 @@ import { realtimeSocket } from "../lib/realtime/socket";
 const RealtimeContext = createContext(false);
 
 export function RealtimeProvider({ children }: PropsWithChildren) {
+  function handleJobUpdated(payload: unknown) {
+    console.info("Email job updated:", payload);
+  }
+
   useEffect(() => {
     function handleConnect() {
       console.info("Connected to Mailflow realtime server.");
@@ -25,12 +29,14 @@ export function RealtimeProvider({ children }: PropsWithChildren) {
     realtimeSocket.on("connect", handleConnect);
     realtimeSocket.on("realtime:ready", handleReady);
     realtimeSocket.on("disconnect", handleDisconnect);
+    realtimeSocket.on("email_job_updated", handleJobUpdated);
     realtimeSocket.connect();
 
     return () => {
       realtimeSocket.off("connect", handleConnect);
       realtimeSocket.off("realtime:ready", handleReady);
       realtimeSocket.off("disconnect", handleDisconnect);
+      realtimeSocket.off("email_job_updated", handleJobUpdated);
       realtimeSocket.disconnect();
     };
   }, []);
