@@ -319,6 +319,7 @@ mailflow/
 - [x] Retry and exponential backoff
 - [x] Failed-job recovery controls with manual requeue actions
 - [x] Live dashboard polling, browser campaign creation, and dashboard retry action
+- [x] Scheduled campaigns with delayed BullMQ jobs
 - [ ] Real-time job monitoring
 - [ ] Scheduled campaigns
 - [ ] Email-provider integration and safe development mail testing
@@ -329,9 +330,9 @@ mailflow/
 
 ## Overall progress
 
-**Estimated completion: 45%**
+**Estimated completion: 48%**
 
-`█████████░░░░░░░░░░░ 45%`
+`██████████░░░░░░░░░░ 48%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
@@ -340,9 +341,9 @@ mailflow/
 ```text
 React dashboard → Fastify API → PostgreSQL
                          ↓
-                  Redis (ready)
+             BullMQ queue → Redis
                          ↓
-              BullMQ worker (next milestones)
+                 Worker service
 ```
 
-The API now persists campaigns and one `EmailJob` database record per recipient, then enqueues each job in BullMQ. The worker workspace has its own environment configuration and Prisma client; the next step is to run the worker so it claims jobs and updates their statuses independently of the API request.
+The API persists campaigns and one `EmailJob` database record per recipient, then enqueues each job in BullMQ. Immediate campaigns are processed by the worker, while scheduled campaigns use BullMQ delays before becoming available to the worker. The dashboard currently polls the API; the next monitoring milestone is live event updates without polling.
