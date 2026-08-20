@@ -1,7 +1,10 @@
 import { env } from "./config/env.js";
 import { buildApp } from "./app.js";
+import { attachSocketServer } from "./realtime/socket.js";
 
 const app = buildApp();
+
+attachSocketServer(app);
 
 try {
   await app.listen({

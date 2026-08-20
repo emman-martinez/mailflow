@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Provider } from "react-redux";
 import { store } from "../app/store";
+import { RealtimeProvider } from "./RealtimeProvider";
 import { ThemeProvider } from "./ThemeProvider";
 
 const queryClient = new QueryClient({
@@ -19,7 +20,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     <Provider store={store}>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <RealtimeProvider>{children}</RealtimeProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </ThemeProvider>
