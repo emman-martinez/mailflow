@@ -356,7 +356,7 @@ mailflow/
 - [x] Live dashboard polling, browser campaign creation, and dashboard retry action
 - [x] Scheduled campaigns with delayed BullMQ jobs
 - [x] Socket.IO connection and Redis Pub/Sub event bridge
-- [ ] Live dashboard updates driven by worker events (event publishing verification in progress)
+- [x] Live dashboard updates driven by worker events
 - [ ] Email-provider integration and safe development mail testing
 - [ ] Backend, frontend, and end-to-end tests
 - [ ] Structured error logs and Sentry monitoring
@@ -365,9 +365,9 @@ mailflow/
 
 ## Overall progress
 
-**Estimated completion: 50%**
+**Estimated completion: 55%**
 
-`██████████░░░░░░░░░░ 50%`
+`███████████░░░░░░░░░ 55%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
@@ -381,4 +381,4 @@ React dashboard → Fastify API → PostgreSQL
                  Worker service
 ```
 
-For live monitoring, the worker publishes job-status events to Redis Pub/Sub. The API subscribes to `mailflow:job-events` and broadcasts those events through Socket.IO to connected React clients. The dashboard still polls TanStack Query as a fallback; the next frontend milestone is invalidating the query immediately when a Socket.IO event arrives.
+For live monitoring, the worker publishes job-status events to Redis Pub/Sub. The API subscribes to `mailflow:job-events` and broadcasts those events through Socket.IO to connected React clients. The dashboard invalidates its TanStack Query data immediately when an event arrives and keeps polling as a fallback.
