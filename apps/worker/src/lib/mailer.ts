@@ -1,38 +1,41 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
+import type {
+  EmailMessage,
+  EmailProvider,
+  EmailSendResult,
+} from "../providers/email-provider.js";
 
-const mailTransporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: false,
-});
+export class SmtpEmailProvider implements EmailProvider {
+  private readonly transporter = nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: false,
+  });
 
-type SendEmailInput = {
-  recipientEmail: string;
-  subject: string;
-  body: string;
-};
+  async send(message: EmailMessage): Promise<EmailSendResult> {
+    // Keeps the retry test available.
+    if (message.to.includes("+fail@")) {
+      throw new Error("Simulated email provider failure.");
+    }
 
-export async function sendEmail({
-  recipientEmail,
-  subject,
-  body,
-}: SendEmailInput): Promise<void> {
-  // Keeps the retry test available.
-  if (recipientEmail.includes("+fail@")) {
-    throw new Error("Simulated email provider failure.");
+    const result = await this.transporter.sendMail({
+      from: env.MAIL_FROM,
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+    });
+
+    console.info({
+      event: "email_sent",
+      recipientEmail: message.to,
+      messageId: result.messageId,
+    });
+
+    return {
+      messageId: result.messageId,
+    };
   }
-
-  const result = await mailTransporter.sendMail({
-    from: env.MAIL_FROM,
-    to: recipientEmail,
-    subject,
-    text: body,
-  });
-
-  console.info({
-    event: "email_sent",
-    recipientEmail,
-    messageId: result.messageId,
-  });
 }
+
+export const emailProvider = new SmtpEmailProvider();

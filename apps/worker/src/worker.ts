@@ -1,4 +1,4 @@
-import { sendEmail } from "./lib/mailer.js";
+import { emailProvider } from "./lib/mailer.js";
 import { Worker } from "bullmq";
 import { JOB_EVENTS_CHANNEL, type JobStatusEvent } from "./realtime/events.js";
 import { EMAIL_QUEUE_NAME, type EmailQueueJobData } from "./email.queue.js";
@@ -73,10 +73,10 @@ const worker = new Worker<EmailQueueJobData>(
     });
 
     try {
-      await sendEmail({
-        recipientEmail: job.data.recipientEmail,
+      await emailProvider.send({
+        to: job.data.recipientEmail,
         subject: job.data.subject,
-        body: job.data.body,
+        text: job.data.body,
       });
 
       await prisma.emailJob.update({
