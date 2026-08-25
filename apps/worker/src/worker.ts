@@ -1,3 +1,4 @@
+import { sendEmail } from "./lib/mailer.js";
 import { Worker } from "bullmq";
 import { JOB_EVENTS_CHANNEL, type JobStatusEvent } from "./realtime/events.js";
 import { EMAIL_QUEUE_NAME, type EmailQueueJobData } from "./email.queue.js";
@@ -26,26 +27,6 @@ async function publishJobStatus(
       emailJobId: event.emailJobId,
     });
   }
-}
-
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
-
-async function simulateEmailDelivery(
-  recipientEmail: string,
-  subject: string,
-): Promise<void> {
-  await wait(1_000);
-
-  // Use an address containing "+fail@" to intentionally test retries.
-  if (recipientEmail.includes("+fail@")) {
-    throw new Error("Simulated email provider failure.");
-  }
-
-  console.info(`Email delivered to ${recipientEmail}: ${subject}`);
 }
 
 const worker = new Worker<EmailQueueJobData>(
@@ -92,7 +73,11 @@ const worker = new Worker<EmailQueueJobData>(
     });
 
     try {
-      await simulateEmailDelivery(job.data.recipientEmail, job.data.subject);
+      await sendEmail({
+        recipientEmail: job.data.recipientEmail,
+        subject: job.data.subject,
+        body: job.data.body,
+      });
 
       await prisma.emailJob.update({
         where: {
