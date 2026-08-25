@@ -2,7 +2,7 @@
 
 A full-stack email campaign platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
 
-> Status: actively under development. The queue, worker, scheduling, recovery, and real-time event foundations are implemented; production hardening is next.
+> Status: actively under development. The queue, worker, scheduling, recovery, real-time event, local SMTP, and automated testing foundations are implemented; production hardening is next.
 
 ## Current features
 
@@ -18,7 +18,10 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - PostgreSQL models for campaigns, email jobs, and audit logs
 - Prisma Studio instructions for visually inspecting local data
 - Socket.IO browser connection with Redis Pub/Sub event bridge
-- Worker event publishing for email-job status changes (being verified)
+- Worker event publishing for email-job status changes
+- Nodemailer delivery through a local Mailpit SMTP server
+- Vitest unit, integration, and coverage reporting foundations
+- Playwright end-to-end campaign workflow test configuration
 
 ## Tech stack
 
@@ -109,7 +112,13 @@ REDIS_URL=redis://localhost:6379
 
 Never commit `.env` files.
 
-### 4. Start PostgreSQL and Redis
+Copy the worker environment file as well:
+
+```powershell
+Copy-Item apps\worker\.env.example apps\worker\.env
+```
+
+### 4. Start PostgreSQL, Redis, and Mailpit
 
 ```powershell
 docker compose up -d
@@ -117,7 +126,14 @@ docker compose ps
 docker compose exec redis redis-cli ping
 ```
 
-Both containers should become healthy. The final command should return `PONG`.
+PostgreSQL and Redis should become healthy. The final command should return `PONG`. Mailpit should also be running on its local SMTP and web ports.
+
+Mailpit provides a safe local SMTP server for development:
+
+- SMTP server: `localhost:1025`
+- Mailpit inbox: [http://localhost:8025](http://localhost:8025)
+
+Emails sent by the worker through Nodemailer appear in Mailpit and are not delivered to real recipients.
 
 > Redis is the backing store for BullMQ. It contains queue data when campaigns are created and jobs are waiting or being processed.
 
@@ -306,6 +322,26 @@ npm run typecheck -w @mailflow/worker
 # Build the frontend
 npm run build -w @mailflow/web
 
+# Run API unit tests
+npm run test -w @mailflow/api
+
+# Run API integration tests
+npm run test:integration -w @mailflow/api
+
+# Run worker tests
+npm run test -w @mailflow/worker
+
+# Run frontend tests
+npm run test -w @mailflow/web
+
+# Generate Vitest coverage reports
+npm run test:coverage -w @mailflow/api
+npm run test:coverage -w @mailflow/worker
+npm run test:coverage -w @mailflow/web
+
+# Run the browser end-to-end workflow
+npm run test:e2e -w @mailflow/web
+
 # Open the visual database browser
 cd apps\api
 npx prisma studio --config .\prisma.config.ts --port 51212
@@ -326,6 +362,12 @@ docker compose down -v
 
 > Warning: `docker compose down -v` deletes your local PostgreSQL and Redis data.
 
+### Testing notes
+
+Vitest runs unit and integration tests under each workspace's `src` directory. Playwright tests are stored separately under `apps/web/e2e` and must be run with the `test:e2e` script. Start the API, worker, frontend, PostgreSQL, and Redis before running the end-to-end campaign workflow.
+
+Coverage reports are generated in each workspace's `coverage` directory. The reports are ignored by Git. Playwright failure artifacts are also ignored through `playwright-report/` and `test-results/`.
+
 ## Project structure
 
 ```text
@@ -333,7 +375,7 @@ mailflow/
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Fastify API and Prisma schema
-│   └── worker/           # Future background worker service
+│   └── worker/           # Background worker service
 ├── docs/                 # Architecture and learning documentation
 ├── infra/                # Future infrastructure files
 ├── compose.yml           # Local PostgreSQL and Redis containers
@@ -357,17 +399,19 @@ mailflow/
 - [x] Scheduled campaigns with delayed BullMQ jobs
 - [x] Socket.IO connection and Redis Pub/Sub event bridge
 - [x] Live dashboard updates driven by worker events
-- [ ] Email-provider integration and safe development mail testing
-- [ ] Backend, frontend, and end-to-end tests
+- [x] Email-provider integration and safe development mail testing with Nodemailer and Mailpit
+- [x] Backend and frontend unit/integration test foundation
+- [ ] End-to-end browser test verification in the local full stack
+- [x] Vitest coverage reporting
 - [ ] Structured error logs and Sentry monitoring
 - [ ] Docker production setup, GitHub Actions, and deployment
 - [ ] Architecture diagrams, screenshots, and portfolio case study
 
 ## Overall progress
 
-**Estimated completion: 55%**
+**Estimated completion: 65%**
 
-`███████████░░░░░░░░░ 55%`
+`█████████████░░░░░░░ 65%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
