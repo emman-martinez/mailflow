@@ -38,7 +38,7 @@ jobs:
 
     env:
       NODE_ENV: test
-      LOG_LEVEL: silent
+      LOG_LEVEL: info
       DATABASE_URL: postgresql://mailflow:mailflow_dev_password@localhost:5432/mailflow?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-only-secret-do-not-use-in-production
