@@ -10,6 +10,9 @@ const envSchema = z.object({
     .default("info"),
   REDIS_URL: z.string().url(),
   DATABASE_URL: z.string().url(),
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  MAIL_FROM: z.string().email(),
 });
 
 export const env = envSchema.parse(process.env);
