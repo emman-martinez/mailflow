@@ -1,11 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type PropsWithChildren,
-} from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { RealtimeContext } from "./realtime-context";
 import { realtimeSocket } from "../lib/realtime/socket";
 
 type JobStatusEvent = {
@@ -22,8 +17,6 @@ type JobStatusEvent = {
   attemptsMade: number;
   updatedAt: string;
 };
-
-const RealtimeContext = createContext(false);
 
 export function RealtimeProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
@@ -73,8 +66,4 @@ export function RealtimeProvider({ children }: PropsWithChildren) {
       {children}
     </RealtimeContext.Provider>
   );
-}
-
-export function useRealtimeConnection() {
-  return useContext(RealtimeContext);
 }

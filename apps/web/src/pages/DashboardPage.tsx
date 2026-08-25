@@ -5,7 +5,7 @@ import {
   useDashboardOverview,
   useRetryEmailJob,
 } from "../features/dashboard/dashboard.hooks";
-import { useRealtimeConnection } from "../providers/RealtimeProvider";
+import { useRealtimeConnection } from "../providers/useRealtimeConnection";
 
 const statusStyles: Record<EmailJobStatus, string> = {
   COMPLETED:

@@ -1,0 +1,94 @@
+name: Mailflow CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  verify:
+    name: Verify application
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mailflow
+          POSTGRES_PASSWORD: mailflow_dev_password
+          POSTGRES_DB: mailflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mailflow -d mailflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      LOG_LEVEL: silent
+      DATABASE_URL: postgresql://mailflow:mailflow_dev_password@localhost:5432/mailflow?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-only-secret-do-not-use-in-production
+      JWT_EXPIRES_IN: 15m
+      WEB_ORIGIN: http://localhost:5173
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      MAIL_FROM: no-reply@mailflow.test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: npx prisma generate --config prisma.config.ts
+
+      - name: Apply database migrations
+        working-directory: apps/api
+        run: npx prisma migrate deploy --config prisma.config.ts
+
+      - name: Type-check API
+        run: npm run typecheck -w @mailflow/api
+
+      - name: Type-check worker
+        run: npm run typecheck -w @mailflow/worker
+
+      - name: Run API unit tests
+        run: npm run test -w @mailflow/api
+
+      - name: Run API integration tests
+        run: npm run test:integration -w @mailflow/api
+
+      - name: Run worker tests
+        run: npm run test -w @mailflow/worker
+
+      - name: Run frontend tests
+        run: npm run test -w @mailflow/web
+
+      - name: Lint frontend
+        run: npm run lint -w @mailflow/web
+
+      - name: Build frontend
+        run: npm run build -w @mailflow/web
