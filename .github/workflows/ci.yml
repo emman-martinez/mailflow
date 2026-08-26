@@ -92,3 +92,107 @@ jobs:
 
       - name: Build frontend
         run: npm run build -w @mailflow/web
+  e2e:
+    name: End-to-end browser tests
+    needs: verify
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mailflow
+          POSTGRES_PASSWORD: mailflow_dev_password
+          POSTGRES_DB: mailflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mailflow -d mailflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    env:
+      NODE_ENV: test
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://mailflow:mailflow_dev_password@localhost:5432/mailflow?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-only-secret-do-not-use-in-production
+      JWT_EXPIRES_IN: 15m
+      WEB_ORIGIN: http://localhost:5173
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      MAIL_FROM: no-reply@mailflow.test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: npx prisma generate --config prisma.config.ts
+
+      - name: Apply database migrations
+        working-directory: apps/api
+        run: npx prisma migrate deploy --config prisma.config.ts
+
+      - name: Start API, worker, and frontend
+        run: |
+          npm run dev -w @mailflow/api > api.log 2>&1 &
+          npm run dev -w @mailflow/worker > worker.log 2>&1 &
+          npm run dev -w @mailflow/web -- --host 0.0.0.0 > web.log 2>&1 &
+
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://localhost:3001/api/health > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent http://localhost:3001/api/health
+          curl --fail --silent http://localhost:5173/login > /dev/null
+
+      - name: Run Playwright tests
+        run: npm run test:e2e -w @mailflow/web
+
+      - name: Upload E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-debug-artifacts
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            api.log
+            worker.log
+            web.log
