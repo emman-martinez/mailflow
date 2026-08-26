@@ -2,7 +2,7 @@
 
 A full-stack email campaign platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
 
-> Status: actively under development. The queue, worker, scheduling, recovery, real-time event, local SMTP, and automated testing foundations are implemented; production hardening is next.
+> Status: actively under development. The queue, worker, scheduling, recovery, real-time event, local SMTP, automated testing, observability, and CI foundations are implemented; production hardening is next.
 
 ## Current features
 
@@ -21,7 +21,9 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - Worker event publishing for email-job status changes
 - Nodemailer delivery through a local Mailpit SMTP server
 - Vitest unit, integration, and coverage reporting foundations
-- Playwright end-to-end campaign workflow test configuration
+- Playwright end-to-end campaign workflow test and CI job
+- Optional Sentry error monitoring for the API and React frontend
+- GitHub Actions verification workflow for tests, migrations, linting, and builds
 
 ## Tech stack
 
@@ -35,6 +37,7 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - Redux Toolkit
 - TanStack Query
 - Axios
+- Sentry React SDK
 
 ### Backend and infrastructure
 
@@ -51,6 +54,9 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - JWT authentication
 - Argon2id password hashing
 - Docker Compose
+- Sentry Node SDK
+- Vitest and Playwright testing
+- GitHub Actions CI
 
 ## Prerequisites
 
@@ -319,6 +325,9 @@ npm run typecheck -w @mailflow/api
 # Type-check the worker
 npm run typecheck -w @mailflow/worker
 
+# Type-check the frontend
+npm run typecheck -w @mailflow/web
+
 # Build the frontend
 npm run build -w @mailflow/web
 
@@ -364,14 +373,25 @@ docker compose down -v
 
 ### Testing notes
 
-Vitest runs unit and integration tests under each workspace's `src` directory. Playwright tests are stored separately under `apps/web/e2e` and must be run with the `test:e2e` script. Start the API, worker, frontend, PostgreSQL, and Redis before running the end-to-end campaign workflow.
+Vitest runs unit and integration tests under each workspace's `src` directory. Playwright tests are stored separately under `apps/web/e2e` and must be run with the `test:e2e` script. Start the API, worker, frontend, PostgreSQL, Redis, and Mailpit before running the end-to-end campaign workflow.
 
 Coverage reports are generated in each workspace's `coverage` directory. The reports are ignored by Git. Playwright failure artifacts are also ignored through `playwright-report/` and `test-results/`.
+
+### Observability
+
+Pino records structured API logs locally and in CI. Sentry is optional and remains disabled when no DSN is configured:
+
+- API: `SENTRY_DSN` in `apps/api/.env`
+- Frontend: `VITE_SENTRY_DSN` in `apps/web/.env`
+
+The API reports unexpected 5xx errors to Sentry with request metadata. The React application uses a Sentry error boundary for frontend rendering failures. Do not commit `.env` files or Sentry authentication tokens.
 
 ## Project structure
 
 ```text
 mailflow/
+├── .github/
+│   └── workflows/ci.yml # GitHub Actions verification workflow
 ├── apps/
 │   ├── web/              # React frontend
 │   ├── api/              # Fastify API and Prisma schema
@@ -401,17 +421,18 @@ mailflow/
 - [x] Live dashboard updates driven by worker events
 - [x] Email-provider integration and safe development mail testing with Nodemailer and Mailpit
 - [x] Backend and frontend unit/integration test foundation
-- [ ] End-to-end browser test verification in the local full stack
+- [x] End-to-end browser test verification in the local full stack and CI
 - [x] Vitest coverage reporting
-- [ ] Structured error logs and Sentry monitoring
-- [ ] Docker production setup, GitHub Actions, and deployment
+- [x] Structured error logs and optional Sentry monitoring
+- [x] GitHub Actions CI for tests, migrations, linting, and builds
+- [ ] Docker production setup and deployment
 - [ ] Architecture diagrams, screenshots, and portfolio case study
 
 ## Overall progress
 
-**Estimated completion: 65%**
+**Estimated completion: 75%**
 
-`█████████████░░░░░░░ 65%`
+`███████████████░░░░░ 75%`
 
 > This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
 
