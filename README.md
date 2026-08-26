@@ -2,7 +2,7 @@
 
 A full-stack email campaign platform built to demonstrate asynchronous job queues, background workers, real-time monitoring, authentication, and production-ready engineering practices.
 
-> Status: actively under development. The queue, worker, scheduling, recovery, real-time event, local SMTP, automated testing, observability, and CI foundations are implemented; production hardening is next.
+> Status: local production stack complete. The queue, worker, scheduling, recovery, real-time events, SMTP authentication, automated testing, observability, CI, and production Docker images are implemented. Cloud hosting and the final portfolio case study remain optional next steps.
 
 ## Current features
 
@@ -20,10 +20,13 @@ A full-stack email campaign platform built to demonstrate asynchronous job queue
 - Socket.IO browser connection with Redis Pub/Sub event bridge
 - Worker event publishing for email-job status changes
 - Nodemailer delivery through a local Mailpit SMTP server
+- Authenticated SMTP configuration for external email providers
 - Vitest unit, integration, and coverage reporting foundations
 - Playwright end-to-end campaign workflow test and CI job
 - Optional Sentry error monitoring for the API and React frontend
 - GitHub Actions verification workflow for tests, migrations, linting, and builds
+- Multi-stage production Dockerfiles for the API, worker, and frontend
+- Local production Compose stack with PostgreSQL, Redis, Mailpit, API, worker, and Nginx
 
 ## Tech stack
 
@@ -246,6 +249,42 @@ ACTIVE → RETRYING → RETRYING → FAILED
 
 The event channel is `mailflow:job-events`. PostgreSQL remains the source of truth; Redis Pub/Sub transports live notifications and does not replace durable database state.
 
+## Run the production images locally
+
+The repository includes a production-like Docker setup. It builds the compiled API, worker, and frontend images and runs them independently from the development Vite and TypeScript watch processes.
+
+Create the local production environment file from the safe example:
+
+```powershell
+Copy-Item .env.production.example .env.production
+```
+
+Replace the `JWT_SECRET` value in `.env.production` with a random value of at least 32 characters. Never commit `.env.production`.
+
+Build and start the production stack:
+
+```powershell
+docker compose --env-file .env.production -f compose.prod.yml build
+docker compose --env-file .env.production -f compose.prod.yml up -d
+docker compose --env-file .env.production -f compose.prod.yml ps
+```
+
+Verify the local production services:
+
+- Frontend: [http://localhost:8080](http://localhost:8080)
+- API health: [http://localhost:3001/api/health](http://localhost:3001/api/health)
+- Mailpit inbox: [http://localhost:8026](http://localhost:8026)
+
+Create a campaign from the production frontend and confirm that jobs move through the dashboard while the worker processes them. Mailpit captures the messages locally; it does not deliver them to real recipients.
+
+Stop the production stack without deleting its named volumes:
+
+```powershell
+docker compose --env-file .env.production -f compose.prod.yml down
+```
+
+The `render.yaml` file documents a future cloud deployment. It is not required to run or demonstrate the complete application locally.
+
 ## Authentication endpoints
 
 ### Register
@@ -397,8 +436,11 @@ mailflow/
 │   ├── api/              # Fastify API and Prisma schema
 │   └── worker/           # Background worker service
 ├── docs/                 # Architecture and learning documentation
-├── infra/                # Future infrastructure files
+├── infra/                # Nginx and infrastructure configuration
 ├── compose.yml           # Local PostgreSQL and Redis containers
+├── compose.prod.yml      # Local production-like multi-service stack
+├── render.yaml           # Optional Render Blueprint for cloud deployment
+├── .env.production.example
 └── package.json          # npm workspaces configuration
 ```
 
@@ -425,16 +467,18 @@ mailflow/
 - [x] Vitest coverage reporting
 - [x] Structured error logs and optional Sentry monitoring
 - [x] GitHub Actions CI for tests, migrations, linting, and builds
-- [ ] Docker production setup and deployment
+- [x] Production Dockerfiles and local production Compose smoke test
+- [x] Authenticated SMTP configuration support
+- [ ] Cloud deployment (optional; requires a hosting provider and production SMTP account)
 - [ ] Architecture diagrams, screenshots, and portfolio case study
 
 ## Overall progress
 
-**Estimated completion: 75%**
+**Estimated completion: 85%**
 
-`███████████████░░░░░ 75%`
+`█████████████████░░░ 85%`
 
-> This estimate measures progress against the complete portfolio roadmap, including a production-ready worker, observability, tests, CI/CD, deployment, and the final case study—not only the current MVP.
+> This estimate measures progress against the complete portfolio roadmap. The core application and local production stack are complete; the remaining work is primarily cloud hosting and the final portfolio presentation.
 
 ## Learning checkpoint: current architecture
 
