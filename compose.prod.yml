@@ -81,6 +81,7 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       MAIL_FROM: no-reply@mailflow.test
+      SMTP_SECURE: "false"
     depends_on:
       postgres:
         condition: service_healthy

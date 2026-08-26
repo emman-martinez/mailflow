@@ -6,15 +6,23 @@ import type {
   EmailSendResult,
 } from "../providers/email-provider.js";
 
+const smtpAuth =
+  env.SMTP_USER && env.SMTP_PASSWORD
+    ? {
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASSWORD,
+      }
+    : undefined;
+
 export class SmtpEmailProvider implements EmailProvider {
   private readonly transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
-    secure: false,
+    secure: env.SMTP_SECURE === "true",
+    ...(smtpAuth ? { auth: smtpAuth } : {}),
   });
 
   async send(message: EmailMessage): Promise<EmailSendResult> {
-    // Keeps the retry test available.
     if (message.to.includes("+fail@")) {
       throw new Error("Simulated email provider failure.");
     }
