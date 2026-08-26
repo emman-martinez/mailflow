@@ -4,6 +4,7 @@ import { env } from "./config/env.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { campaignRoutes } from "./modules/campaigns/campaign.routes.js";
 import { dashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
+import { Sentry } from "./lib/sentry.js";
 import authPlugin from "./plugins/auth.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
@@ -67,6 +68,19 @@ export function buildApp() {
       },
       "Request failed",
     );
+
+    if (statusCode >= 500) {
+      Sentry.captureException(error, {
+        tags: {
+          requestId: request.id,
+          method: request.method,
+          route: request.url,
+        },
+        extra: {
+          statusCode,
+        },
+      });
+    }
 
     if (reply.sent) {
       return;

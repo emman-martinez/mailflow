@@ -23,6 +23,7 @@
     "@fastify/jwt": "^10.2.0",
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
+    "@sentry/node": "^10.71.0",
     "argon2": "^0.45.1",
     "bullmq": "^5.81.2",
     "dotenv": "^17.4.2",
