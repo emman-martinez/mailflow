@@ -8,6 +8,23 @@ import authPlugin from "./plugins/auth.js";
 import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 
+function getErrorStatusCode(error: unknown): number {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  ) {
+    return error.statusCode;
+  }
+
+  return 500;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown server error.";
+}
+
 export function buildApp() {
   const app = Fastify({
     logger: {
@@ -36,6 +53,31 @@ export function buildApp() {
   app.register(authRoutes, { prefix: "/api/auth" });
   app.register(campaignRoutes, { prefix: "/api/campaigns" });
   app.register(dashboardRoutes, { prefix: "/api/dashboard" });
+
+  app.setErrorHandler((error, request, reply) => {
+    const statusCode = getErrorStatusCode(error);
+
+    request.log.error(
+      {
+        err: error,
+        requestId: request.id,
+        method: request.method,
+        url: request.url,
+        statusCode,
+      },
+      "Request failed",
+    );
+
+    if (reply.sent) {
+      return;
+    }
+
+    return reply.status(statusCode).send({
+      message:
+        statusCode >= 500 ? "Internal server error." : getErrorMessage(error),
+      requestId: request.id,
+    });
+  });
 
   return app;
 }
